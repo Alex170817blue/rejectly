@@ -1,0 +1,341 @@
+# rejectly 🎭
+
+> *The job board where every application leads to rejection. Just like real life.*
+
+Rejectly is a satirical full-stack web app that simulates the modern job hunting experience — absurd listings, personalized AI-generated rejections, ghosting, and the slow accumulation of despair. Built as a portfolio project to explore Next.js, PostgreSQL, and local AI integration.
+
+---
+
+## Screenshots
+
+> *(Add your screenshots here — suggested order below)*
+
+| Landing | Profile Setup |
+|--------|--------------|
+| ![Landing](screenshots/landing.png) | ![Profile](screenshots/profile.png) |
+
+| Job Board | Job Detail |
+|-----------|-----------|
+| ![Jobs](screenshots/jobs.png) | ![Detail](screenshots/detail.png) |
+
+| Inbox | Email View |
+|-------|-----------|
+| ![Inbox](screenshots/inbox.png) | ![Email](screenshots/email.png) |
+
+| Badges & Stats | Settings |
+|---------------|---------|
+| ![Badges](screenshots/badges.png) | ![Settings](screenshots/settings.png) |
+
+---
+
+## Features
+
+- **AI-generated job listings** — Every session generates 6 unique absurd-but-believable job postings tailored to your profile (junior roles requiring 10+ years experience, unpaid internships with CEO responsibilities, impossible tech stacks, zodiac sign requirements...)
+- **Personalized rejections** — After applying, Ollama generates a custom rejection email based on your profile and the specific job. Four types: polite corporate, brutally honest, completely absurd, and ghosting
+- **Realistic UX** — Rejections arrive after a random 3–8 second delay. Some never arrive. The inbox fills up slowly, just like the real thing
+- **Gamification** — Unlockable badges (Ghost Protocol, Rejection Collector, Overqualified...) and rejection rate statistics
+- **User authentication** — Email + password login with hashed passwords via bcrypt
+- **Persistent data** — Profile, inbox, stats and badges survive across sessions via PostgreSQL
+- **Profile customization** — Custom skills, bio, and profile photo upload (stored as base64)
+- **Mobile-first design** — Designed for 480px viewport, works on any screen size
+
+---
+
+## Tech Stack
+
+### Frontend
+| Technology | Purpose |
+|-----------|---------|
+| **Next.js 16** (App Router) | Framework, routing, SSR |
+| **React 19** | UI components and state management |
+| **Tailwind CSS** | Utility-first styling |
+| Custom CSS variables | Design tokens and palette |
+
+### Backend
+| Technology | Purpose |
+|-----------|---------|
+| **Next.js API Routes** | REST endpoints (no separate server needed) |
+| **Prisma ORM** | Database queries and schema management |
+| **PostgreSQL** | Persistent data storage |
+| **NextAuth.js** | Authentication (JWT sessions) |
+| **bcryptjs** | Password hashing |
+
+### AI
+| Technology | Purpose |
+|-----------|---------|
+| **Ollama** | Local AI inference engine (free, no API key) |
+| **Llama 3.2** | Language model for generating jobs and rejections |
+
+### Design
+| Detail | Value |
+|--------|-------|
+| Primary color | `#252756` (Navy) |
+| Accent | `#4E7D9A` (Steel blue) |
+| Highlight | `#B7EBF4` (Ice blue) |
+| Midnight | `#1A3465` |
+| Max width | `480px` (mobile-first) |
+
+---
+
+## Architecture
+
+```
+fake-job-app/
+│
+├── app/
+│   ├── page.js                  # Main app — screen state management
+│   ├── layout.js                # Global layout + SessionProvider
+│   ├── globals.css              # CSS variables and base styles
+│   │
+│   ├── login/
+│   │   └── page.js              # Login + Register page
+│   │
+│   └── api/
+│       ├── auth/[...nextauth]/
+│       │   └── route.js         # NextAuth handler (JWT + Credentials)
+│       ├── register/
+│       │   └── route.js         # User registration + bcrypt
+│       ├── user/
+│       │   └── route.js         # GET / POST / PATCH user profile
+│       ├── apply/
+│       │   └── route.js         # Save job application + increment stats
+│       ├── emails/
+│       │   └── route.js         # GET / POST / PATCH rejection emails
+│       ├── generate-job/
+│       │   └── route.js         # Ollama → generate 6 job listings
+│       └── generate-rejection/
+│           └── route.js         # Ollama → generate rejection email
+│
+├── components/
+│   ├── Landing.jsx              # Hero screen with mascot
+│   ├── ProfileForm.jsx          # Onboarding form (name, role, skills)
+│   ├── JobBoard.jsx             # Job listings + bottom nav
+│   ├── JobCard.jsx              # Single job card component
+│   ├── JobDetail.jsx            # Job detail + apply button
+│   ├── Inbox.jsx                # Email list
+│   ├── EmailView.jsx            # Single email view
+│   ├── BadgesPage.jsx           # Stats + achievement badges
+│   ├── SettingsPage.jsx         # Edit profile + photo upload
+│   └── Providers.jsx            # NextAuth SessionProvider wrapper
+│
+├── lib/
+│   └── db.js                    # Prisma singleton client
+│
+├── prisma/
+│   └── schema.prisma            # Database schema
+│
+└── public/
+    └── images/
+        └── mascotte.svg         # App mascot
+```
+
+---
+
+## Database Schema
+
+```prisma
+model User {
+  id           String        @id @default(cuid())
+  name         String?
+  email        String?       @unique
+  password     String?       // bcrypt hash
+  role         String?
+  experience   String        @default("2")
+  bio          String?
+  photo        String?       // base64 encoded
+  skills       String[]
+  onboarded    Boolean       @default(false)
+  createdAt    DateTime      @default(now())
+
+  accounts     Account[]     // NextAuth
+  sessions     Session[]     // NextAuth
+  applications Application[]
+  emails       Email[]
+  stats        Stats?
+}
+
+model Application {
+  id        String   @id @default(cuid())
+  userId    String
+  jobId     String
+  jobTitle  String
+  company   String
+  appliedAt DateTime @default(now())
+  user      User     @relation(...)
+}
+
+model Email {
+  id        String   @id @default(cuid())
+  userId    String
+  company   String
+  jobTitle  String
+  subject   String
+  body      String?
+  type      String   // ghost | polite | brutal | absurd | fake
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(...)
+}
+
+model Stats {
+  userId   String @unique
+  applied  Int    @default(0)
+  rejected Int    @default(0)
+  ghosted  Int    @default(0)
+  absurd   Int    @default(0)
+  brutal   Int    @default(0)
+  user     User   @relation(...)
+}
+```
+
+---
+
+## How the AI Works
+
+Rejectly uses **Ollama** running locally — no API keys, no costs, completely offline.
+
+### Job Generation (`/api/generate-job`)
+The route generates jobs **one at a time** (6 sequential requests) with targeted prompts for each absurdity type:
+- Junior role requiring 10+ years experience
+- Unpaid internship with CEO-level responsibilities
+- Impossible tech stack (15 frameworks)
+- Absurd personal requirements (zodiac sign, personality type)
+- Salary that sounds good but is terrible
+- Normal-sounding job that becomes surreal in the details
+
+Each prompt uses `num_predict: 300` to keep responses short and prevent JSON truncation. A JSON repair function handles edge cases where the model returns malformed output.
+
+### Rejection Generation (`/api/generate-rejection`)
+After applying, a rejection is generated after a random 3–8 second delay. The type is chosen randomly with weighted probability:
+- **30% polite** — vague corporate HR language
+- **30% absurd** — completely surreal reason
+- **20% brutal** — painfully honest
+- **5% fake positive** — starts as good news, ends as rejection
+- **15% ghost** — no response generated at all
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js 18+
+- PostgreSQL (local instance)
+- [Ollama](https://ollama.com) installed and running
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/yourusername/rejectly.git
+cd rejectly
+```
+
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Pull the AI model
+```bash
+ollama pull llama3.2
+```
+
+### 4. Set up environment variables
+Create a `.env` file in the root:
+```env
+DATABASE_URL="postgresql://postgres:yourpassword@localhost:5432/rejectly"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="your-secret-at-least-32-chars"
+```
+
+Generate a secret with:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+### 5. Set up the database
+```bash
+# Create the database
+psql -U postgres -c "CREATE DATABASE rejectly;"
+
+# Run migrations
+npx prisma migrate dev --name init
+
+# Generate Prisma client
+npx prisma generate
+```
+
+### 6. Make sure Ollama is running
+```bash
+ollama run llama3.2
+# Then open a new terminal and continue
+```
+
+### 7. Start the development server
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and start getting rejected.
+
+---
+
+## Key Technical Decisions
+
+**Why Ollama instead of OpenAI?**
+Free, local, no API key required. The tradeoff is speed (6 sequential requests take ~30–40 seconds) and occasional JSON formatting issues from the model, which the route handles with a repair function.
+
+**Why no separate backend?**
+Next.js API Routes are sufficient for this project. Keeping everything in one repo simplifies deployment and development — no need to run two servers.
+
+**Why manage screens with useState instead of the router?**
+The app is essentially a single-page experience where all state lives in memory. Using `useState` for screen management keeps the code simple and explicit. The tradeoff is losing browser back/forward navigation.
+
+**Why store photos as base64?**
+Avoids the need for file storage (S3, Cloudinary, etc.) which would add cost and complexity. The tradeoff is larger database rows and slower profile loading for high-resolution photos.
+
+---
+
+## Badges
+
+| Badge | Condition |
+|-------|-----------|
+| 🎯 First Blood | Apply to your first job |
+| 💔 Rejection Collector | Receive 5 rejections |
+| 👻 Ghost Protocol | Get ghosted at least once |
+| 🕷️ Professionally Invisible | Get ghosted 3 times |
+| 🤡 Clown Applications | Receive an absurd rejection |
+| 🔪 Brutally Honest | Receive a brutal rejection |
+| 🏃 Desperate Sprinter | Apply to 10 jobs |
+| 🧠 Overqualified | Apply to 3 junior roles |
+
+---
+
+## What I Learned
+
+This project was built as a learning exercise to understand:
+
+- **Next.js App Router** — file-based routing, Server vs Client components, API routes
+- **React state management** — lifting state up, useState patterns, useEffect for side effects
+- **Full-stack data flow** — from UI interaction → API route → Prisma → PostgreSQL → back to UI
+- **Authentication** — JWT sessions, bcrypt password hashing, protected routes
+- **AI integration** — prompt engineering, JSON parsing from LLM output, error handling for non-deterministic responses
+- **Database design** — relational schema, cascading deletes, upsert patterns
+
+---
+
+## Known Limitations
+
+- Job listings regenerate on every session (not cached in the database)
+- Google OAuth configured but not enabled (requires Google Cloud credentials)
+- Ollama must be running locally — no cloud AI fallback
+- Photo storage as base64 is not ideal for production use
+- No email verification for new accounts
+
+---
+
+## License
+
+MIT — do whatever you want with it. Just don't use it to actually apply for jobs.
+
+---
+
+*Built with ☕ and existential dread about the job market.*
