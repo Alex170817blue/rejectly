@@ -1,4 +1,4 @@
-# rejectly 🎭
+# rejectly
 
 > *The job board where every application leads to rejection. Just like real life.*
 
