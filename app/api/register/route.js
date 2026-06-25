@@ -13,13 +13,13 @@ export async function POST(request) {
   }
 
   try {
-    // Controlla se esiste già
+    // Controllk
     const existing = await db.user.findUnique({ where: { email } })
     if (existing) {
       return Response.json({ error: 'Email already in use' }, { status: 400 })
     }
 
-    // Hasha la password — non salviamo mai password in chiaro
+    
     const hashedPassword = await bcrypt.hash(password, 12)
 
     const user = await db.user.create({
